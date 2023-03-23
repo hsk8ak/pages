@@ -1,0 +1,18 @@
+$process = Start-Process notepad.exe -PassThru
+$maxWaitTime = 30 # 最大待機時間（秒）
+$waitInterval = 1 # 待機間隔（秒）
+
+# ウィンドウが開くまで待機
+for ($i = 0; $i -lt $maxWaitTime; $i += $waitInterval) {
+    if ($process.MainWindowHandle -ne [System.IntPtr]::Zero) {
+        $handle = $process.MainWindowHandle
+        Write-Host "ウィンドウハンドル: $handle"
+        break
+    }
+    Start-Sleep -Seconds $waitInterval
+}
+
+# ウィンドウが開かなかった場合はエラーを表示
+if (!$handle) {
+    Write-Error "ウィンドウが開かれませんでした。"
+}
