@@ -1,0 +1,175 @@
+
+インストールレスプログラミング( ´ー`)
+インストールレスプログラミング( ´ー`)
+読者になる
+
+2017-01-03
+Powerpointで一定間隔マクロ
+ Powerpoint VBA
+
+探せばすぐ見つかると思ってて，昨日探しきれなかったので，ノートから転機(;´▽｀A``
+
+元となったページは不明。私にとっての必要部分以外削って，けっこういろいろ組み入れたので原型もよくわからない。
+ワードアートを挿入する AddTextEffectが比較的新しいコマンドな気がするので，もしかしたら編集しないと動かないかも。
+理解が不十分ですが，AddressOfの使い方がかっこよくて好きなコード。
+
+標準モジュールに下記のものを貼って， StartOnTimeを実行するとタイマーが動きます。
+時間部分をクリックすると止まり，もう一度クリックするとリセットしてまた動きます。
+スライドショー切っても動き続けるので，止めるときはKillOnTimeを実行してください。
+
+ファイルが添付できれば，下準備は図形書いて済ませれるのにコードにすると長くなっちゃいますね(;´▽｀A``
+
+
+Option Explicit
+Declare Function SetTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long
+Declare Function KillTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long) As Long
+Dim lngTimerID As Long
+Dim blnTimer As Boolean
+Dim StartTime As Date
+Dim TimerPie As Shape, TimerTxt As Shape
+Dim CountDownTime As Date
+
+
+Sub StartOnTime()
+    Dim TSlide As Slide: Set TSlide = ActivePresentation.Slides(1)
+    CountDownTime = TimeValue("00:01:00")
+    'CountDownTime = TimeValue("00:" & Format(oshp.TextFrame.TextRange.Text, "hh:mm")) 'ボタンから取得するよう作ってた分
+    '扇形と時間表示部分を作成-------------------------------------------------------------------下準備
+    On Error Resume Next
+    TSlide.Shapes("Time").Delete: TSlide.Shapes("Pie").Delete: TSlide.Shapes("Oval").Delete
+    On Error GoTo 0
+    TSlide.Shapes.AddShape(msoShapeOval, 5, 5, 220, 220).Name = "Oval"
+    TSlide.Shapes("Oval").Fill.ForeColor.RGB = RGB(0, 0, 255)
+    Set TimerPie = TSlide.Shapes.AddShape(msoShapePie, 10, 10, 220, 220)
+    TimerPie.Name = "Pie"
+    TimerPie.Fill.ForeColor.RGB = RGB(255, 255, 0)
+    Set TimerTxt = _
+    TSlide.Shapes.AddTextEffect(msoTextEffect33, DispTime(CountDownTime), "Meiryo UI", 180, msoTrue, msoFalse, 240, 10)
+    TimerTxt.Name = "Time"
+    TimerTxt.ActionSettings(ppMouseClick).Action = ppActionRunMacro
+    TimerTxt.ActionSettings(ppMouseClick).Run = "ClickTime"
+    ActivePresentation.SlideShowSettings.ShowType = ppShowTypeWindow
+    ActivePresentation.SlideShowSettings.Run
+    '---------------------------------------------------------------------------------------下準備
+    
+    'もし前のタイマーが動いているなら切る。
+    If blnTimer = True Then lngTimerID = KillTimer(0, lngTimerID)
+
+    StartTime = Now
+    TimerPie.Adjustments.Item(1) = -90
+    TimerPie.Adjustments.Item(2) = -89.9
+    
+    'タイマースタート
+    lngTimerID = SetTimer(0, 0, 1000, AddressOf DisplayTimer)
+    blnTimer = True
+    'SlideShowWindows(1).View.Player(TSlide.Shapes("start").Id).Play '音を鳴らす　とりあえず切ってます
+    TimerTxt.TextFrame.TextRange.Text = DispTime(CountDownTime)
+End Sub
+
+Sub KillOnTime()
+    Dim TSlide As Slide: Set TSlide = ActivePresentation.Slides(1)
+    
+    TimerTxt.TextFrame.TextRange.Text = DispTime(CountDownTime)
+    
+    lngTimerID = KillTimer(0, lngTimerID)
+    blnTimer = False
+End Sub
+Sub DisplayTimer()
+Dim TSlide As Slide: Set TSlide = ActivePresentation.Slides(1)
+    Dim NokoriJikan As Integer, ZentaiJikan As Integer
+
+    NokoriJikan = ConvSec(StartTime + CountDownTime - Now)
+    ZentaiJikan = ConvSec(CountDownTime)
+    
+    TimerTxt.TextFrame.TextRange.Text = DispTime(StartTime + CountDownTime - Now)
+    
+    TimerPie.Adjustments(2) = -Int(NokoriJikan / ZentaiJikan * 360) - 90
+    If NokoriJikan <= 0 Then
+        Call KillOnTime
+        'SlideShowWindows(1).View.Player(TSlide.Shapes("stop").Id).Play　 '音を鳴らす　とりあえず切ってます
+    ElseIf NokoriJikan Mod 5 = 0 Or NokoriJikan <= 10 Then
+        'SlideShowWindows(1).View.Player(TSlide.Shapes("pu").Id).Play '音を鳴らす　とりあえず切ってます
+    End If
+End Sub
+
+Sub ClickTime()
+    If blnTimer = False Then
+        Call StartOnTime
+    Else
+        Call KillOnTime
+    End If
+End Sub
+Function DispTime(datTime As Date)
+    DispTime = Format(Minute(datTime), "00") & ":" & Format(Second(datTime), "00")
+End Function
+
+Function ConvSec(datTime As Date)
+    ConvSec = Hour(datTime) * 3600 + Minute(datTime) * 60 + Second(datTime)
+End Function
+f:id:chemiphys:20170103123852g:plain
+
+chemiphys 7年前
+
+  
+
+関連記事
+スライド再現マクロ　経過②
+2017-01-27
+スライド再現マクロ 経過②
+chemiphys.hateblo.jp つづきです。けっこうがんばりました。ま…
+ShpClsに速度と加速度の概念を追加してみた
+2017-01-21
+ShpClsに速度と加速度の概念を追加してみた
+つづきです。 chemiphys.hateblo.jp クラスモジュールは本当に…
+熱運動クラスモジュール化③速度と動きを実装
+2017-01-15
+熱運動クラスモジュール化③速度と動きを実装
+明日からまた仕事なので，なんとか動かすところまで行きたかっ…
+Visibleプロパティの使用例
+2017-01-11
+Visibleプロパティの使用例
+Powerpoint VBA Visible アニメーション
+Powerpoint VBAに興味が沸いた方々へ⑤
+2017-01-09
+Powerpoint VBAに興味が沸いた方々へ⑤
+Powerpoint VBA マクロ ループについて
+新しい記事 (2017-01-03)
+テキスト書き出し・読み込みのメモ
+過去の記事 (2017-01-03)
+	扇形を動かす
+記事一覧
+コメントを書く
+はてなブログ
+Powerpointで一定間隔マクロ
+
+プロフィール
+id:chemiphys
+chemiphys
+このブログについて
+検索
+記事を検索
+注目記事
+ExcelVBA VBAでワークシートをコピーした時印刷レイアウトが思うとおりにならない件の対処
+2018-02-06
+ExcelVBA VBAでワークシートをコピーした時印刷レイアウトが思うとおりにならない件の対処
+2017-01-03
+ActiveDirectoryからログインしている自分自身の情報を取得
+( ´ー`)
+2023-05-28
+( ´ー`)
+Powerpoint VBA 基本① 入門編
+2017-01-08
+Powerpoint VBA 基本① 入門編
+GetObject関数でWordやPowerpointを起動する方法
+2017-02-24
+GetObject関数でWordやPowerpointを起動する方法
+
+
+はてなブログ開発ブログ
+週刊はてなブログ
+はてなブログトップ
+ 上へ
+インストールレスプログラミング( ´ー`)
+Powered by Hatena Blog.
+ ダッシュボード  PC版 ブログを報告する
+引用するにはまずログインしてください
